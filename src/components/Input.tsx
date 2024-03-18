@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { ChangeEvent, useContext, useState } from "react";
 import Img from "../img/img.png";
 import Attach from "../img/attach.png";
 import { AuthContext } from "../context/AuthContext";
@@ -6,6 +6,7 @@ import { ChatContext } from "../context/ChatContext";
 import {
   arrayUnion,
   doc,
+  onSnapshot,
   serverTimestamp,
   Timestamp,
   updateDoc,
@@ -14,9 +15,10 @@ import { db, storage } from "../firebase";
 import { v4 as uuid } from "uuid";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
-const Input = () => {
-  const [text, setText] = useState("");
-  const [img, setImg] = useState(null);
+const Input: React.FC = () => {
+  const [err, setErr] = useState<string | null>(null);
+  const [text, setText] = useState<string>("");
+  const [img, setImg] = useState<File | null>(null);
 
   const { currentUser } = useContext(AuthContext);
   const { data } = useContext(ChatContext);
@@ -26,10 +28,12 @@ const Input = () => {
       const storageRef = ref(storage, uuid());
 
       const uploadTask = uploadBytesResumable(storageRef, img);
-
+      if (!currentUser) return;
       uploadTask.on(
+        "state_changed",
+        (snapshot) => {},
         (error) => {
-          //TODO:Handle Error
+          setErr(error.message);
         },
         () => {
           getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
@@ -50,19 +54,19 @@ const Input = () => {
         messages: arrayUnion({
           id: uuid(),
           text,
-          senderId: currentUser.uid,
+          senderId: currentUser?.uid,
           date: Timestamp.now(),
         }),
       });
     }
-
+    if (!currentUser) return;
     await updateDoc(doc(db, "userChats", currentUser.uid), {
       [data.chatId + ".lastMessage"]: {
         text,
       },
       [data.chatId + ".date"]: serverTimestamp(),
     });
-
+    if (!data.user) return;
     await updateDoc(doc(db, "userChats", data.user.uid), {
       [data.chatId + ".lastMessage"]: {
         text,
@@ -72,6 +76,7 @@ const Input = () => {
 
     setText("");
     setImg(null);
+    setErr(null); 
   };
   return (
     <div className="input">
@@ -87,7 +92,9 @@ const Input = () => {
           type="file"
           style={{ display: "none" }}
           id="file"
-          onChange={(e) => setImg(e.target.files[0])}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setImg(e.target.files && e.target.files[0])
+          }
         />
         <label htmlFor="file">
           <img src={Img} alt="" />

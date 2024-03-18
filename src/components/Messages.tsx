@@ -4,13 +4,22 @@ import { ChatContext } from "../context/ChatContext";
 import { db } from "../firebase";
 import Message from "./Message";
 
-const Messages = () => {
-  const [messages, setMessages] = useState([]);
+interface MessageProps {
+  id: string;
+  text: string;
+  img?: string;
+  senderId: string;
+}
+const Messages: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const { data } = useContext(ChatContext);
 
   useEffect(() => {
     const unSub = onSnapshot(doc(db, "chats", data.chatId), (doc) => {
-      doc.exists() && setMessages(doc.data().messages);
+      if (doc.exists()) {
+        const chatData = doc.data() as { messages: Message[] };
+        setMessages(chatData.messages);
+      }
     });
 
     return () => {
@@ -18,7 +27,7 @@ const Messages = () => {
     };
   }, [data.chatId]);
 
-  console.log(messages)
+  console.log(messages);
 
   return (
     <div className="messages">

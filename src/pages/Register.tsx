@@ -42,12 +42,10 @@ const Register = () => {
         },
         () => {
           getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-            //Update profile
             await updateProfile(res.user, {
               displayName,
               photoURL: downloadURL,
             });
-            //create user on firestore
             await setDoc(doc(db, "users", res.user.uid), {
               uid: res.user.uid,
               displayName,
@@ -60,7 +58,6 @@ const Register = () => {
         }
       );
     } catch (err) {
-      console.log(err);
       setErr(true);
     }
   };
